@@ -130,7 +130,7 @@ public static class OrderEndpoints
             version = config["APP_VERSION"] ?? "dev",
             hostname = Environment.MachineName,
             environment = config["ENVIRONMENT"] ?? "local",
-            //test change
+            //test change 2
         }));
     }
 }
