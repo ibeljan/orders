@@ -128,7 +128,8 @@ public static class OrderEndpoints
         {
             service = "orders-api",
             version = config["APP_VERSION"] ?? "dev",
-            hostname = Environment.MachineName
+            hostname = Environment.MachineName,
+            environment = config["ENVIRONMENT"] ?? "local",
         }));
     }
 }
