@@ -70,7 +70,7 @@ public record CreateOrderRequest(string Product, int Quantity)
         else if (Product.Length > 100)
             errors[nameof(Product)] = ["Product must be 100 characters or less."];
         if (Quantity < 1 || Quantity > 1000)
-            errors[nameof(Quantity)] = ["Quantity must be between 1 and 1000."];
+            errors[nameof(Quantity)] = ["Quantity must be between 1-1000 items."];
         return errors;
     }
 }
