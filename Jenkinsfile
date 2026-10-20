@@ -1,11 +1,15 @@
-// M2 · Demo 5 — build and test all three services in parallel; one JUnit report.
+// M3 · Demo 8 — build, scan and push images on main (adds to the M2 pipeline). Needs credential 'acr-push'.
 pipeline {
   agent { label 'linux-docker' }
   options {
-    timeout(time: 10, unit: 'MINUTES')          // no runaway builds
+    timeout(time: 30, unit: 'MINUTES')          // no runaway builds
     timestamps()                                 // Timestamper plugin
-    buildDiscarder(logRotator(numToKeepStr: '10'))
+    buildDiscarder(logRotator(numToKeepStr: '30'))
     disableConcurrentBuilds()
+  }
+  environment {
+    // set ACR_LOGIN_SERVER once in Manage Jenkins → System → Global properties → Environment variables
+    ACR = "${env.ACR_LOGIN_SERVER}"
   }
   stages {
     stage('Build & test') {
@@ -33,10 +37,49 @@ pipeline {
             dir('app/web') {
               sh '''
                 npm ci
-                [ -d "$WORKSPACE/results" ] || mkdir -p "$WORKSPACE/results"
                 node --test --test-reporter=spec --test-reporter-destination=stdout \
                             --test-reporter=junit --test-reporter-destination="$WORKSPACE/results/web.xml"
               '''
+            }
+          }
+        }
+      }
+    }
+    stage('Version') {
+      steps {
+        script {
+          env.TAG = "1.0.${env.BUILD_NUMBER}-${sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()}"
+          currentBuild.displayName = env.TAG
+        }
+      }
+    }
+    stage('Images') {
+      when { branch 'main' }                     // feature branches and PRs: build + test only
+      stages {
+        stage('Docker build') {
+          steps {
+            sh '''
+              for svc in api worker web; do
+                docker build --build-arg APP_VERSION="$TAG" -t "$ACR/orders-$svc:$TAG" "app/$svc"
+              done
+            '''
+          }
+        }
+        stage('Trivy scan') {
+          steps {
+            sh '''
+              for svc in api worker web; do
+                trivy image --severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed "$ACR/orders-$svc:$TAG"
+              done
+            '''
+          }
+        }
+        stage('Push to ACR') {
+          steps {
+            script {
+              docker.withRegistry("https://${env.ACR}", 'acr-push') {
+                ['api', 'worker', 'web'].each { svc -> docker.image("${env.ACR}/orders-${svc}:${env.TAG}").push() }
+              }
             }
           }
         }
