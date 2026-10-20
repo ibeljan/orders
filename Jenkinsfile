@@ -2,9 +2,9 @@
 pipeline {
   agent { label 'linux-docker' }
   options {
-    timeout(time: 30, unit: 'MINUTES')          // no runaway builds
+    timeout(time: 10, unit: 'MINUTES')          // no runaway builds
     timestamps()                                 // Timestamper plugin
-    buildDiscarder(logRotator(numToKeepStr: '30'))
+    buildDiscarder(logRotator(numToKeepStr: '10'))
     disableConcurrentBuilds()
   }
   stages {
@@ -33,6 +33,7 @@ pipeline {
             dir('app/web') {
               sh '''
                 npm ci
+                [ -d "$WORKSPACE/results" ] || mkdir -p "$WORKSPACE/results"
                 node --test --test-reporter=spec --test-reporter-destination=stdout \
                             --test-reporter=junit --test-reporter-destination="$WORKSPACE/results/web.xml"
               '''
