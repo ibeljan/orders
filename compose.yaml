@@ -1,0 +1,58 @@
+# The whole Orders app for local development and the M3 Compose demos.
+#   docker compose up -d --build
+#   docker compose up -d --scale worker=3
+#   docker compose --profile tools up -d      # + database admin UI on :8081
+name: orders
+
+services:
+  web:
+    build: ./app/web
+    image: orders-web:${TAG:-dev}
+    ports: ["3000:3000"]
+    environment:
+      API_URL: http://api:8080
+      APP_VERSION: ${TAG:-dev}
+    depends_on: [api]
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./app/api
+      args: { APP_VERSION: "${TAG:-dev}" }
+    image: orders-api:${TAG:-dev}
+    environment:
+      ConnectionStrings__OrdersDb: "Host=db;Database=orders;Username=orders;Password=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}"
+    depends_on:
+      db: { condition: service_healthy }
+    restart: unless-stopped
+
+  worker:
+    build: ./app/worker
+    image: orders-worker:${TAG:-dev}
+    environment:
+      API_URL: http://api:8080
+      POLL_INTERVAL_SECONDS: "2"
+    depends_on: [api]
+    restart: unless-stopped
+
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: orders
+      POSTGRES_USER: orders
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes: [orders-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "orders", "-d", "orders"]
+      interval: 5s
+      retries: 10
+    restart: unless-stopped
+
+  adminer:
+    image: adminer:4
+    profiles: [tools]
+    ports: ["8081:8080"]
+    depends_on: [db]
+
+volumes:
+  orders-data: {}

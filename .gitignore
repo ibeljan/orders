@@ -1,0 +1,9 @@
+# Dependencies and build output
+node_modules/
+bin/
+obj/
+.venv/
+__pycache__/
+
+# Local secrets
+.env

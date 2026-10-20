@@ -1,0 +1,9 @@
+# Single-stage build — for comparison only (M3 · Demo 5). Ships the whole SDK.
+FROM mcr.microsoft.com/dotnet/sdk:10.0
+WORKDIR /src
+COPY . .
+RUN dotnet publish OrdersApi -c Release -o /app
+WORKDIR /app
+ENV ASPNETCORE_URLS=http://+:8080
+EXPOSE 8080
+ENTRYPOINT ["dotnet", "OrdersApi.dll"]
