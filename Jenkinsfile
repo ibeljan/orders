@@ -37,6 +37,7 @@ pipeline {
             dir('app/web') {
               sh '''
                 npm ci
+                mkdir -p "$WORKSPACE/results"            
                 node --test --test-reporter=spec --test-reporter-destination=stdout \
                             --test-reporter=junit --test-reporter-destination="$WORKSPACE/results/web.xml"
               '''
