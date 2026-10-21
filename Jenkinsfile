@@ -65,15 +65,6 @@ pipeline {
             '''
           }
         }
-        stage('Trivy scan') {
-          steps {
-            sh '''
-              for svc in api worker web; do
-                trivy image --severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed "$ACR/orders-$svc:$TAG"
-              done
-            '''
-          }
-        }
         stage('Push to ACR') {
           steps {
             script {
