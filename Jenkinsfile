@@ -54,8 +54,7 @@ pipeline {
         }
       }
     }
-    stage('Images') {
-      when { branch 'main' }                     // feature branches and PRs: build + test only
+    stage('Images') {                    // feature branches and PRs: build + test only
       stages {
         stage('Docker build') {
           steps {
