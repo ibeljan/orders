@@ -68,7 +68,7 @@ pipeline {
         stage('Push to ACR') {
           steps {
             script {
-              docker.withRegistry("https://${env.ACR}", 'jenkins') {
+              docker.withRegistry("https://${env.ACR}", '8abc3f36-dbd1-47d0-84c5-dd1e07969236') {
                 ['api', 'worker', 'web'].each { svc -> docker.image("${env.ACR}/orders-${svc}:${env.TAG}").push() }
               }
             }
