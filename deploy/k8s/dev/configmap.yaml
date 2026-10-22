@@ -1,0 +1,9 @@
+# Settings shared by all three components (envFrom).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: orders-config
+  namespace: dev
+data:
+  API_URL: http://orders-api:8080
+  POLL_INTERVAL_SECONDS: "5"
