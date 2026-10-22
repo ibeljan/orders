@@ -97,6 +97,33 @@ pipeline {
         }
       }
     }
+    stage('Approve production') {
+      steps {
+        timeout(time: 1, unit: 'HOURS') {
+          input message: "Deploy ${env.TAG} to production?", ok: 'Deploy'
+        }
+      }
+    }
+    stage('Deploy prod') {
+      steps {
+        withKubeConfig([credentialsId: 'aks-kubeconfig']) {
+          sh 'kubectl apply -f deploy/k8s/prod/configmap.yaml -f deploy/k8s/prod/postgres.yaml -f deploy/k8s/prod/services.yaml -f deploy/k8s/prod/autoscaling.yaml -f deploy/k8s/prod/networkpolicies.yaml'
+          sh '''
+            for svc in api worker web; do
+              kubectl set image --local -o yaml -f "deploy/k8s/prod/$svc.yaml" "$svc=$ACR/orders-$svc:$TAG" \
+                | kubectl set env --local -o yaml -f - "APP_VERSION=$TAG" \
+                | kubectl apply -f -
+            done
+          '''
+          sh '''
+            for d in orders-api orders-worker orders-web; do
+              kubectl -n prod rollout status "deploy/$d" --timeout=3m
+            done
+          '''
+          sh './deploy/smoke-test.sh prod "$TAG"'
+        }
+      }
+    }
   }
   post {
     always  { junit allowEmptyResults: true, testResults: 'results/*.xml' }
