@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orders-web
+  namespace: dev
+  labels: { app: orders-web, tier: frontend }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: orders-web }
+  template:
+    metadata:
+      labels: { app: orders-web, tier: frontend }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000                                  # the "node" user in the image
+      containers:
+        - name: web
+          image: acrdevopswsivanbeljan.azurecr.io/orders-web:9.9.9
+          ports: [{ name: http, containerPort: 3000 }]
+          env:
+            - { name: APP_VERSION, value: "9.9.9" }          # shown in the page footer
+          envFrom:
+            - configMapRef: { name: orders-config }
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { memory: 128Mi }
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /health, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false

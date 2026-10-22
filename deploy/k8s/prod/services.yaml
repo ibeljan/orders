@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: orders-api
+  namespace: prod
+  labels: { app: orders-api }
+spec:
+  type: ClusterIP
+  selector: { app: orders-api }
+  ports: [{ name: http, port: 8080, targetPort: http }]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orders-web
+  namespace: prod
+  labels: { app: orders-web }
+spec:
+  type: LoadBalancer                                     # Azure gives it a public IP
+  selector: { app: orders-web }
+  ports: [{ name: http, port: 80, targetPort: http }]

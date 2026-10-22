@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orders-api
+  namespace: prod
+  labels: { app: orders-api, tier: backend }
+spec:
+  replicas: 3
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels: { app: orders-api }
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxSurge: 25%, maxUnavailable: 0 }
+  template:
+    metadata:
+      labels: { app: orders-api, tier: backend }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+      terminationGracePeriodSeconds: 30
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector: { matchLabels: { app: orders-api } }
+      containers:
+        - name: api
+          image: acrdevopswsivanbeljan.azurecr.io/orders-api:1.0.0
+          ports: [{ name: http, containerPort: 8080 }]
+          env:
+            - { name: APP_VERSION, value: "1.0.0" }          # shown by /api/info
+          envFrom:
+            - configMapRef: { name: orders-config }
+            - secretRef: { name: orders-secrets }        # ConnectionStrings__OrdersDb
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { memory: 256Mi }
+          readinessProbe:                                # database reachable?
+            httpGet: { path: /health/ready, port: http }
+            periodSeconds: 5
+            failureThreshold: 3
+          livenessProbe:                                 # process alive? (never checks the DB)
+            httpGet: { path: /health/live, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
