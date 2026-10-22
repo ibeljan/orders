@@ -76,6 +76,27 @@ pipeline {
         }
       }
     }
+    stage('Deploy dev') {
+      steps {
+        withKubeConfig([credentialsId: 'aks-kubeconfig']) {
+          // everything except the Deployments, exactly as in Git
+          sh 'kubectl apply -f deploy/k8s/dev/configmap.yaml -f deploy/k8s/dev/postgres.yaml -f deploy/k8s/dev/services.yaml -f deploy/k8s/dev/autoscaling.yaml -f deploy/k8s/dev/networkpolicies.yaml'
+          // the Deployments with the image and version of THIS build (--local: change the YAML, don't touch the cluster)
+          sh '''
+            for svc in api worker web; do
+              kubectl set image --local -o yaml -f "deploy/k8s/dev/$svc.yaml" "$svc=$ACR/orders-$svc:$TAG" \
+                | kubectl set env --local -o yaml -f - "APP_VERSION=$TAG" \
+                | kubectl apply -f -
+            done
+          '''
+          sh '''
+            for d in orders-api orders-worker orders-web; do
+              kubectl -n dev rollout status "deploy/$d" --timeout=3m
+            done
+          '''
+        }
+      }
+    }
   }
   post {
     always  { junit allowEmptyResults: true, testResults: 'results/*.xml' }
